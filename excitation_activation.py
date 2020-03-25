@@ -31,11 +31,11 @@ class FES_Activation:
         Sets excitation time constant based on fast twitch fibres composition and other constants from literature
         :param FT_percent: percentage fast twitch fibres in the muscle
         """
-        FT = 2549 #
-        S0 = 450000 # [N / cm ^ 2]
-        gamma = 10 * np.pi / 180 # [rad]
-        dm = 1054 # [kg / m ^ 3]
-        lF = 0.1 # [m]
+        FT = 2549
+        S0 = 450000  # [N / cm ^ 2]
+        gamma = 10 * np.pi / 180  # [rad]
+        dm = 1054  # [kg / m ^ 3]
+        lF = 0.1  # [m]
 
         PCSA = FT / (S0 * np.cos(gamma))
         m = PCSA * lF * dm
@@ -46,7 +46,10 @@ class FES_Activation:
         :param f_stim: frequency stimulation profile
         :return: frequency scaling factor for each point in the profile
         """
-        return (self.a1 - self.a2)/(1 + np.exp((f_stim - self.f0)/self.R)) + self.a2
+        #  Sv(i) = (a1 - a2)/(1 + exp((frecFES(i)-r0)/R)) + a2;
+        freq_scale = (self.a1 - self.a2)/(1 + np.exp((f_stim - self.f0)/self.R)) + self.a2
+        freq_scale[freq_scale > 1] = 1
+        return freq_scale
 
     def Su(self, u_stim):
         """
@@ -89,7 +92,6 @@ class FES_Activation:
         sol = integrate.solve_ivp(self.activation_derivative, (0, max(time)), [0, 0], max_step=0.01)
         return sol.t, sol.y
 
-
     def activation_derivative(self, t, a):
         """
         Activation derivative for the ODE of the 2nd block in Hammerstein model
@@ -98,27 +100,32 @@ class FES_Activation:
         :return: [a_dot, a_dot_dot]
         """
         ex = self.get_excitation_signal(self.f_stim, self.u_stim)
+        print(self.excitation_finite_difference(t, ex))
         if self.excitation_finite_difference(t, ex) > 0:
             k1 = self.Te * self.t_rise
             k2 = self.Te + self.t_rise
         else:
             k1 = self.Te * self.t_fall
             k2 = self.Te + self.t_fall
-        A = [[0,1],[-1/k1, -k2/k1]]
+        A = [[0, 1], [-1/k1, -k2/k1]]
         ex_int = np.interp(t, self.time, ex)
         return np.matmul(A, a) + ex_int*np.array([0, 1/k1])
 
 
 if __name__ == "__main__":
     time = np.linspace(0, 2, 100)
-    f_stim = np.ones(100)
+    f_stim = 66*np.ones(100)
     u_stim = np.zeros(100)
-    u_stim[25:49] = 2
-    u_stim[75:99] = 2
-    t_rise = 0.068 #[s]
-    t_fall = 0.076 #[s]
+    u_stim[25:49] = 50
+    u_stim[75:99] = 50
+    # U between 29 and 43
+    # F0 = 39.6 Hz
+    t_rise = 0.068  # [s]
+    t_fall = 0.076  # [s]
     TA_Activation = FES_Activation(time, u_stim, f_stim, t_rise, t_fall, 0.25)
     t,y = TA_Activation.get_activation_signal(time, f_stim, u_stim)
     plt.figure()
     plt.plot(t,y[0,:])
+    plt.plot(time, u_stim/max(u_stim))
+    plt.plot(time, TA_Activation.get_excitation_signal(f_stim, u_stim))
     plt.show()
