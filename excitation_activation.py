@@ -6,12 +6,15 @@ import matplotlib.pyplot as plt
 class FES_Activation:
     """
     Activation-Excitation dynamics of an artificially activated muscle from Romero et al. (2015)
-    f_stim is a stimulation frequency profile
-    u_stim is a stimulation intensity profile
-    t is the time vector associated with the profiles
+    f_stim is a stimulation frequency profile. Centre frequency is 39.6 Hz.
+    u_stim is a stimulation intensity profile. Note the threshold intensity is 29 and saturation of 43
+    time is the time vector associated with the profiles
+    t_rise and t_fall are time constants for the muscle activation
+    FT_percent is the percentage of fast-twitch fibres in the muscle
+    I might add params for the cross sectional area
     """
     def __init__(self, time, u_stim, f_stim, t_rise, t_fall, FT_percent):
-        self.u_stim = u_stim    #need to set one of these to a vector of 1s
+        self.u_stim = u_stim
         self.f_stim = f_stim
         self.t_rise = t_rise
         self.t_fall = t_fall
@@ -31,11 +34,11 @@ class FES_Activation:
         Sets excitation time constant based on fast twitch fibres composition and other constants from literature
         :param FT_percent: percentage fast twitch fibres in the muscle
         """
-        FT = 2549
+        FT = 2549     # Force at tetanus [N]
         S0 = 450000  # [N / cm ^ 2]
-        gamma = 10 * np.pi / 180  # [rad]
-        dm = 1054  # [kg / m ^ 3]
-        lF = 0.1  # [m]
+        gamma = 10 * np.pi / 180  # Tetanic pennation angle [rad]
+        dm = 1054  # [kg / m ^ 3] #
+        lF = 0.1  # Resting fibre length [m]
 
         PCSA = FT / (S0 * np.cos(gamma))
         m = PCSA * lF * dm
