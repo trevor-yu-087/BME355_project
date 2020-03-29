@@ -115,7 +115,7 @@ class Hill_Type_Model:
 
     def model_dynamics(self, vm, lm, lt):
         #TODO: Double check this model dynamics
-        return self.Fmax*(self.alpha*get_force_length(lt)*get_force_velocity(lm,lt)+get_force_parallel_elastic(lm)+0.1*vm-self.Fmax*self.get_force_length(lt))
+        return self.Fmax*(self.alpha*self.get_force_length(lt)*self.get_force_velocity(lm,lt)+self.get_force_parallel_elastic(lm)+0.1*vm-self.Fmax*self.get_force_length(lt))
 
     def simulate(self):
         #TODO: Add simulate function
