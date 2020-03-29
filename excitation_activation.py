@@ -1,7 +1,7 @@
 import numpy as np
 from scipy import integrate
 import matplotlib.pyplot as plt
-
+import regression
 
 class FES_Activation:
     """
@@ -121,25 +121,50 @@ class FittedActivation:
         Constructor requires activation fit data as a numpy array
         :param data: numpy array of data to curve fit
         """
-        self.fit_data = data
+        self.walking_cycle_percent = data[:, 0]
+        self.activation = data[:, 1]
+        self.time = np.arange(0, 1, 0.002)
+        self.centers = np.arange(0, 0.7, 0.009)
+        self.width = 0.04
+        self.model = regression.Regression(self.walking_cycle_percent, self.activation, self.centers,self.width)
 
+    def show_curves(self):
+        plt.figure()
+        plt.plot(self.walking_cycle_percent, self.activation, 'k')
+        plt.plot(self.time, self.model.eval(self.time), 'r')
+        plt.xlabel('Walking Cycle (%)')
+        plt.ylabel('Activation')
+        # plt.legend('Data', 'Regression')
+        plt.show()
 
+    def get_activation(self, t):
+        """
+        :param t: time point at which to evaluate activation, in percentage of walking cycle
+        :return: activation level at that time
+        """
+        return max(0, self.model.eval(t))
 
 
 if __name__ == "__main__":
-    time = np.linspace(0, 2, 100)
-    f_stim = 66*np.ones(100)
-    u_stim = np.zeros(100)
-    u_stim[25:49] = 50
-    u_stim[75:99] = 50
-    # U between 29 and 43
-    # F0 = 39.6 Hz
-    t_rise = 0.068  # [s]
-    t_fall = 0.076  # [s]
-    TA_Activation = FES_Activation(time, u_stim, f_stim, t_rise, t_fall, 0.25)
-    t,y = TA_Activation.get_activation_signal(time, f_stim, u_stim)
-    plt.figure()
-    plt.plot(t,y[0,:])
-    plt.plot(time, u_stim/max(u_stim))
-    plt.plot(time, TA_Activation.get_excitation_signal(f_stim, u_stim))
-    plt.show()
+    # Example FES Activation
+    # time = np.linspace(0, 2, 100)
+    # f_stim = 66*np.ones(100)
+    # u_stim = np.zeros(100)
+    # u_stim[25:49] = 50
+    # u_stim[75:99] = 50
+    # # U between 29 and 43
+    # # F0 = 39.6 Hz
+    # t_rise = 0.068  # [s]
+    # t_fall = 0.076  # [s]
+    # TA_Activation = FES_Activation(time, u_stim, f_stim, t_rise, t_fall, 0.25)
+    # t,y = TA_Activation.get_activation_signal(time, f_stim, u_stim)
+    # plt.figure()
+    # plt.plot(t,y[0,:])
+    # plt.plot(time, u_stim/max(u_stim))
+    # plt.plot(time, TA_Activation.get_excitation_signal(f_stim, u_stim))
+    # plt.show()
+
+    # Using fitted activation
+    gastroc_data = np.loadtxt('curve_datasets/gastrocnemius_activation.csv', delimiter=',')
+    ga_activation = FittedActivation(gastroc_data)
+    ga_activation.show_curves()
