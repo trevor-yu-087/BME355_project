@@ -37,9 +37,10 @@ class FES_Activation:
         FT = 2549     # Force at tetanus [N]
         S0 = 450000  # [N / cm ^ 2]
         gamma = 10 * np.pi / 180  # Tetanic pennation angle [rad]
-        dm = 1054  # [kg / m ^ 3] #
+        dm = 1054  # [kg / m ^ 3] Muscle density
         lF = 0.1  # Resting fibre length [m]
 
+        # TODO Change PCSA to be muscle specific
         PCSA = FT / (S0 * np.cos(gamma))
         m = PCSA * lF * dm
         self.Te = (25 + 0.1 * m * (1 - FT_percent)) / 1000
@@ -87,8 +88,6 @@ class FES_Activation:
         backward_time = max(0, t - dt) # small negative times are wrapped to end of cycle
         forward = np.interp(forward_time, self.time, ex)
         backward = np.interp(backward_time, self.time, ex)
-        # forward = self.elastance(forward_time)
-        # backward = self.elastance(backward_time)
         return (forward - backward) / (2*dt)
 
     def get_activation_signal(self, time, f_stim, u_stim):
@@ -103,7 +102,6 @@ class FES_Activation:
         :return: [a_dot, a_dot_dot]
         """
         ex = self.get_excitation_signal(self.f_stim, self.u_stim)
-        print(self.excitation_finite_difference(t, ex))
         if self.excitation_finite_difference(t, ex) > 0:
             k1 = self.Te * self.t_rise
             k2 = self.Te + self.t_rise
@@ -113,6 +111,19 @@ class FES_Activation:
         A = [[0, 1], [-1/k1, -k2/k1]]
         ex_int = np.interp(t, self.time, ex)
         return np.matmul(A, a) + ex_int*np.array([0, 1/k1])
+
+# TODO Add naturalistic muscle activation for gastroc and soleus
+
+
+class FittedActivation:
+    def __init__(self, data):
+        """
+        Constructor requires activation fit data as a numpy array
+        :param data: numpy array of data to curve fit
+        """
+        self.fit_data = data
+
+
 
 
 if __name__ == "__main__":
