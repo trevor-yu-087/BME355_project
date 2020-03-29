@@ -1,7 +1,8 @@
 import numpy as np
 from scipy import integrate
 import matplotlib.pyplot as plt
-import regression
+from regression import Regression
+
 
 class FES_Activation:
     """
@@ -112,21 +113,20 @@ class FES_Activation:
         ex_int = np.interp(t, self.time, ex)
         return np.matmul(A, a) + ex_int*np.array([0, 1/k1])
 
-# TODO Add naturalistic muscle activation for gastroc and soleus
 
-
-class FittedActivation:
-    def __init__(self, data):
+class Fitted_Activation:
+    def __init__(self, data_file):
         """
-        Constructor requires activation fit data as a numpy array
-        :param data: numpy array of data to curve fit
+        Constructor requires activation fit data
+        :param data_file: path to .csv file containing activation data
         """
+        data = np.loadtxt(data_file, delimiter=',')
         self.walking_cycle_percent = data[:, 0]
         self.activation = data[:, 1]
         self.time = np.arange(0, 1, 0.002)
         self.centers = np.arange(0, 0.7, 0.009)
         self.width = 0.04
-        self.model = regression.Regression(self.walking_cycle_percent, self.activation, self.centers,self.width)
+        self.model = Regression(self.walking_cycle_percent, self.activation, self.centers,self.width)
 
     def show_curves(self):
         plt.figure()
@@ -165,6 +165,6 @@ if __name__ == "__main__":
     # plt.show()
 
     # Using fitted activation
-    gastroc_data = np.loadtxt('curve_datasets/gastrocnemius_activation.csv', delimiter=',')
-    ga_activation = FittedActivation(gastroc_data)
+    ga_activation = Fitted_Activation('curve_datasets/gastrocnemius_activation.csv')
     ga_activation.show_curves()
+    print(ga_activation.get_activation(0.5))
