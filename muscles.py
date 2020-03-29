@@ -128,9 +128,31 @@ class Hill_Type_Model:
     def model_dynamics(self, vm, lm, lt):
         #TODO: Double check this model dynamics
         return self.Fmax*(self.alpha*self.get_force_length(lt)*self.get_force_velocity(lm,lt)+self.get_force_parallel_elastic(lm)+0.1*vm-self.Fmax*self.get_force_length(lt))
+        return a*force_length_muscle(lm)*force_velocity_muscle(vm) + force_length_parallel(lm)+beta*vm-force_length_tendon(lt)
 
     def simulate(self):
         #TODO: Add simulate function
+        length = self.resting_length_tendon+self.resting_length_muscle
+
+        def a(t):
+            if t < 0.5: return 0
+            else: return 1
+        
+        def velocity_wrapper(t,x):
+            return get_velocity(a(t), x, self.norm_tendon_length(length, x))
+
+        ICs = [0,2]
+        solution = scipy.integrate.solve_ivp(velocity_wrapper, ICs, [1], rtol = 1e-8, atol = 1e-7)
+
+        normal_tendon_length = self.norm_tendon_length(length, solution.y[0])
+        plt.subplot(2,1,1)
+        plt.plot(solution.t, solution.y.T)
+        plt.ylabel('Normalized Length of CE')
+        plt.subplot(2,1,2)
+        plt.plot(solution.t, np.array(force_length_tendon(normal_tendon_length))*self.f0M)
+        plt.ylabel('Force (N)')
+        plt.xlabel('Time (s)')
+        plt.show()
         return -1
 
 def plot_curves():
