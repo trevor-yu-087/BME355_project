@@ -119,27 +119,19 @@ class Hill_Type_Model:
         :param lt: normalized length of tendon (series elastic element)
         :return: normalized lengthening velocity of muscle (contractile element)
         """
-        # WRITE CODE HERE TO CALCULATE VELOCITY
         beta = 0.1 # damping coefficient (see damped model in Millard et al.)
         sol = scipy.optimize.fsolve(self.model_dynamics, [0], (self.alpha,lm,lt,self.Fmax,beta))
         #print (sol)
         return sol
 
     def model_dynamics(self, vm, lm, lt):
-        #TODO: Double check this model dynamics
-        return self.Fmax*(self.alpha*self.get_force_length(lt)*self.get_force_velocity(lm,lt)+self.get_force_parallel_elastic(lm)+0.1*vm-self.Fmax*self.get_force_length(lt))
-        return a*force_length_muscle(lm)*force_velocity_muscle(vm) + force_length_parallel(lm)+beta*vm-force_length_tendon(lt)
+        return self.alpha*self.get_force_length(lt)*self.get_force_velocity(lm,lt) + self.get_force_parallel_elastic(lm) + 0.1*vm-self.get_force_length(lt)
 
     def simulate(self):
-        #TODO: Add simulate function
         length = self.resting_length_tendon+self.resting_length_muscle
-
-        def a(t):
-            if t < 0.5: return 0
-            else: return 1
         
         def velocity_wrapper(t,x):
-            return get_velocity(a(t), x, self.norm_tendon_length(length, x))
+            return self.get_velocity_CE(x, self.norm_tendon_length(length, x))
 
         ICs = [0,2]
         solution = scipy.integrate.solve_ivp(velocity_wrapper, ICs, [1], rtol = 1e-8, atol = 1e-7)
@@ -149,11 +141,10 @@ class Hill_Type_Model:
         plt.plot(solution.t, solution.y.T)
         plt.ylabel('Normalized Length of CE')
         plt.subplot(2,1,2)
-        plt.plot(solution.t, np.array(force_length_tendon(normal_tendon_length))*self.f0M)
+        plt.plot(solution.t, np.array(self.get_force_length(normal_tendon_length))*self.Fmax)
         plt.ylabel('Force (N)')
         plt.xlabel('Time (s)')
         plt.show()
-        return -1
 
 def plot_curves():
     """
