@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy
+from scipy import integrate
 
 class Hill_Type_Model:
 
@@ -77,22 +78,22 @@ class Hill_Type_Model:
         # source [2], equation 2
         return (-1/self.w**2)*((self.norm_tendon_length(lt, 1)/self.lOpt)**2) + (2/(self.w**2))*(self.norm_tendon_length(lt,1)/self.lOpt) - 1/(self.w**2) + 1
 
-    def get_force_velocity(self, lm, lt):
+    def get_force_velocity(self, vm):
         # source [2], equation 3
-        vm = []
+        vms = []
         N = 1.5
-        for i in range(len(lm)):
-            if self.get_velocity_CE(lm, lt) < 0:
-                vm.append(self.Vmax + self.get_velocity_CE(lm, lt)[i]) / (self.Vmax - self.k_curve*self.get_velocity_CE(lm, lt)[i])
+        for i in range(len(vm)):
+            if vm[i] < 0:
+                vms.append(self.Vmax + vm[i]) / (self.Vmax - self.k_curve*vm[i])
             else:
-                vm.append(N - ((N-1)*(self.Vmax + self.get_velocity_CE(lm, lt))) / (7.56*self.k_curve*self.get_velocity_CE(lm, lt) + self.Vmax))
-        return np.asarray(vm)
+                vms.append(N - ((N-1)*(self.Vmax + vm[i])) / (7.56*self.k_curve*vm[i] + self.Vmax))
+        return np.asarray(vms)
 
-    def get_force_contractile_element(self, lm, lt):
+    def get_force_contractile_element(self, lt, vm):
         # source: [2], equation 1
         fCE = []
-        for i in range(len(lm)):
-            fCE.append(self.alpha*self.Fmax*self.get_force_length(lt[i])*self.get_force_velocity(lm[i],lt[i]))
+        for i in range(len(lt)):
+            fCE.append(self.alpha*self.Fmax*self.get_force_length(lt[i])*self.get_force_velocity(vm[i]))
         return np.asarray(fCE)
 
     def get_force_parallel_elastic(self,lm):
@@ -105,11 +106,11 @@ class Hill_Type_Model:
                 fPE.append(0)
         return np.asarray(fPE)
 
-    def get_force_series_elastic(self, lm, lt):
+    def get_force_series_elastic(self, lm, lt, vm):
         # source: [3], equation adapted from simulation plan
         fSE = []
         for i in range(len(lm)):
-            fSE.append((self.get_force_contractile_element(lm[i],lt[i]) + self.get_force_parallel_elastic(lm[i]))*np.cos(self.p_angle))
+            fSE.append((self.get_force_contractile_element(lt[i],vm[i]) + self.get_force_parallel_elastic(lm[i]))*np.cos(self.p_angle))
         return np.asarray(fSE)
 
     def get_velocity_CE(self, lm, lt):
@@ -119,13 +120,12 @@ class Hill_Type_Model:
         :param lt: normalized length of tendon (series elastic element)
         :return: normalized lengthening velocity of muscle (contractile element)
         """
-        beta = 0.1 # damping coefficient (see damped model in Millard et al.)
-        sol = scipy.optimize.fsolve(self.model_dynamics, [0], (self.alpha,lm,lt,self.Fmax,beta))
-        #print (sol)
+        sol = scipy.optimize.fsolve(self.model_dynamics, [0], (lm,lt))
+        print (sol)
         return sol
 
     def model_dynamics(self, vm, lm, lt):
-        return self.alpha*self.get_force_length(lt)*self.get_force_velocity(lm,lt) + self.get_force_parallel_elastic(lm) + 0.1*vm-self.get_force_length(lt)
+        return self.alpha*self.get_force_length(lt)*self.get_force_velocity(vm) + self.get_force_parallel_elastic(lm) + 0.1*vm-self.get_force_length(lt)
 
     def simulate(self):
         length = self.resting_length_tendon+self.resting_length_muscle
@@ -133,8 +133,8 @@ class Hill_Type_Model:
         def velocity_wrapper(t,x):
             return self.get_velocity_CE(x, self.norm_tendon_length(length, x))
 
-        ICs = [0,2]
-        solution = scipy.integrate.solve_ivp(velocity_wrapper, ICs, [1], rtol = 1e-8, atol = 1e-7)
+        times = [0,2]
+        solution = scipy.integrate.solve_ivp(velocity_wrapper, times, [0], rtol = 1e-8, atol = 1e-7)
 
         normal_tendon_length = self.norm_tendon_length(length, solution.y[0])
         plt.subplot(2,1,1)
@@ -146,23 +146,26 @@ class Hill_Type_Model:
         plt.xlabel('Time (s)')
         plt.show()
 
-def plot_curves():
-    """
-    Plot force-length, force-velocity, SE, and PE curves.
-    """
-    # lm = np.arange(0, 1.8, .01)
-    # vm = np.arange(-1.2, 1.2, .01)
-    # lt = np.arange(0, 1.07, .01)
-    # plt.subplot(2,1,1)
-    # plt.plot(lm, force_length_muscle(lm), 'r')
-    # plt.plot(lm, force_length_parallel(lm), 'g')
-    # plt.plot(lt, force_length_tendon(lt), 'b')
-    # plt.legend(('CE', 'PE', 'SE'))
-    # plt.xlabel('Normalized length')
-    # plt.ylabel('Force scale factor')
-    # plt.subplot(2, 1, 2)
-    # plt.plot(vm, force_velocity_muscle(vm), 'k')
-    # plt.xlabel('Normalized muscle velocity')
-    # plt.ylabel('Force scale factor')
-    # plt.tight_layout()
-    # plt.show()
+# def plot_curves():
+#     """
+#     Plot force-length, force-velocity, SE, and PE curves.
+#     """
+#     lm = np.arange(0, 1.8, .01)
+#     vm = np.arange(-1.2, 1.2, .01)
+#     lt = np.arange(0, 1.07, .01)
+#     plt.subplot(2,1,1)
+#     plt.plot(lm, force_length_muscle(lm), 'r')
+#     plt.plot(lm, force_length_parallel(lm), 'g')
+#     plt.plot(lt, force_length_tendon(lt), 'b')
+#     plt.legend(('CE', 'PE', 'SE'))
+#     plt.xlabel('Normalized length')
+#     plt.ylabel('Force scale factor')
+#     plt.subplot(2, 1, 2)
+#     plt.plot(vm, force_velocity_muscle(vm), 'k')
+#     plt.xlabel('Normalized muscle velocity')
+#     plt.ylabel('Force scale factor')
+#     plt.tight_layout()
+#     plt.show()
+
+tibialis_anterior = Hill_Type_Model("Tibialis Anterior", 0.4,0.3,0.1)
+tibialis_anterior.simulate()
