@@ -79,26 +79,38 @@ class Hill_Type_Model:
 
     def get_force_velocity(self, lm, lt):
         # source [2], equation 3
+        vm = []
         N = 1.5
-        if self.get_velocity_CE(lm, lt) < 0:
-            return (self.Vmax + self.get_velocity_CE(lm, lt)) / (self.Vmax - self.k_curve*self.get_velocity_CE(lm, lt))
-        else:
-            return N - ((N-1)*(self.Vmax + self.get_velocity_CE(lm, lt))) / (7.56*self.k_curve*self.get_velocity_CE(lm, lt) + self.Vmax)
+        for i in range(len(lm)):
+            if self.get_velocity_CE(lm, lt) < 0:
+                vm.append(self.Vmax + self.get_velocity_CE(lm, lt)[i]) / (self.Vmax - self.k_curve*self.get_velocity_CE(lm, lt)[i])
+            else:
+                vm.append(N - ((N-1)*(self.Vmax + self.get_velocity_CE(lm, lt))) / (7.56*self.k_curve*self.get_velocity_CE(lm, lt) + self.Vmax))
+        return np.asarray(vm)
 
     def get_force_contractile_element(self, lm, lt):
         # source: [2], equation 1
-        return self.alpha*self.Fmax*self.get_force_length(lt)*self.get_force_velocity(lm,lt)
+        fCE = []
+        for i in range(len(lm)):
+            fCE.append(self.alpha*self.Fmax*self.get_force_length(lt[i])*self.get_force_velocity(lm[i],lt[i]))
+        return np.asarray(fCE)
 
     def get_force_parallel_elastic(self,lm):
         # source [2], equation 4
-        if self.norm_tendon_length(lm, 1) <= (self.lOpt*(1-self.w)):
-            return self.Fmax*((self.norm_tendon_length(lm, 1)-self.lOpt)/(self.lOpt*self.w))**2
-        else:
-            return 0
+        fPE = []
+        for i in range(len(lm)):
+            if self.norm_tendon_length(lm[i], 1) <= (self.lOpt*(1-self.w)):
+                fPE.append(self.Fmax*((self.norm_tendon_length(lm[i], 1)-self.lOpt)/(self.lOpt*self.w))**2)
+            else:
+                fPE.append(0)
+        return np.asarray(fPE)
 
     def get_force_series_elastic(self, lm, lt):
         # source: [3], equation adapted from simulation plan
-        return (self.get_force_contractile_element(lm,lt) + self.get_force_parallel_elastic(lm))*np.cos(self.p_angle)
+        fSE = []
+        for i in range(len(lm)):
+            fSE.append((self.get_force_contractile_element(lm[i],lt[i]) + self.get_force_parallel_elastic(lm[i]))*np.cos(self.p_angle))
+        return np.asarray(fSE)
 
     def get_velocity_CE(self, lm, lt):
         """
