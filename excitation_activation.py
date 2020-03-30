@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import integrate
 import matplotlib.pyplot as plt
+from regression import Regression
 
 
 class FES_Activation:
@@ -16,53 +17,40 @@ class FES_Activation:
     def __init__(self, time, u_stim, f_stim, t_rise, t_fall, FT_percent):
         self.u_stim = u_stim
         self.f_stim = f_stim
-        self.t_rise = t_rise
-        self.t_fall = t_fall
+        self.t_rise = t_rise  # sec
+        self.t_fall = t_fall  # sec
+        self.FT_percent = FT_percent
         self.time = time
         # Params used by Romero et al. from other literature sources
         self.a2 = 2.5
-        self.R = 40
+        self.R = 40  # 15 ?
         self.rCF = (self.R - 91.2) / (-1.03)
         self.f0 = self.R*np.log((self.a2-1)*np.exp(self.rCF/self.R)-self.a2)
         self.a1 = -self.a2*np.exp(-self.f0/self.R)
         self.u_threshold = (5+((70-1)*(50-5))/((127-1)))     # measured by Romero et al.
         self.u_saturation = (5+((110-1)*(50-5))/((127-1)))   # measured by Romero et al.
-        self.set_Te(FT_percent)
+        self.Te = 0.025     # Estimate for entire muscle excitation time
+        self.ex = self.get_excitation_signal()
+        t, y = self.get_activation_signal()
+        self.t_act = t  # For interpolation
+        self.y_act = y[0, :]    # For interpolation
 
-    def set_Te(self, FT_percent):
+    def Sf(self):
         """
-        Sets excitation time constant based on fast twitch fibres composition and other constants from literature
-        :param FT_percent: percentage fast twitch fibres in the muscle
+        :return: frequency scaling factor for each point in the frequency profile
         """
-        FT = 2549     # Force at tetanus [N]
-        S0 = 450000  # [N / cm ^ 2]
-        gamma = 10 * np.pi / 180  # Tetanic pennation angle [rad]
-        dm = 1054  # [kg / m ^ 3] #
-        lF = 0.1  # Resting fibre length [m]
-
-        PCSA = FT / (S0 * np.cos(gamma))
-        m = PCSA * lF * dm
-        self.Te = (25 + 0.1 * m * (1 - FT_percent)) / 1000
-
-    def Sf(self,f_stim):
-        """
-        :param f_stim: frequency stimulation profile
-        :return: frequency scaling factor for each point in the profile
-        """
-        #  Sv(i) = (a1 - a2)/(1 + exp((frecFES(i)-r0)/R)) + a2;
-        freq_scale = (self.a1 - self.a2)/(1 + np.exp((f_stim - self.f0)/self.R)) + self.a2
+        freq_scale = (self.a1 - self.a2)/(1 + np.exp((self.f_stim - self.f0)/self.R)) + self.a2
         freq_scale[freq_scale > 1] = 1
         return freq_scale
 
-    def Su(self, u_stim):
+    def Su(self):
         """
         Intensity scaling can have either pulse width or amplitude as profile
         :param u_stim: intensity stimulation profile
         :return: intensity scaling factor for each point in the profile
         """
-        # Su as function of time
         Su = []
-        for u in u_stim:
+        for u in self.u_stim:
             if u < self.u_threshold:
                 Su.append(0)
             elif self.u_threshold <= u < self.u_saturation:
@@ -71,10 +59,10 @@ class FES_Activation:
                 Su.append(1)
         return np.array(Su)
 
-    def get_excitation_signal(self, f_stim, u_stim):
-        return self.Sf(f_stim) * self.Su(u_stim)
+    def get_excitation_signal(self):
+        return self.Sf() * self.Su()
 
-    def excitation_finite_difference(self, t, ex):
+    def excitation_finite_difference(self, t):
         """
         Calculates finite-difference approximation of excitation derivative for determining whether to use
         rise or fall time constants.
@@ -85,15 +73,20 @@ class FES_Activation:
         dt = .01
         forward_time = t + dt
         backward_time = max(0, t - dt) # small negative times are wrapped to end of cycle
-        forward = np.interp(forward_time, self.time, ex)
-        backward = np.interp(backward_time, self.time, ex)
-        # forward = self.elastance(forward_time)
-        # backward = self.elastance(backward_time)
+        forward = np.interp(forward_time, self.time, self.ex)
+        backward = np.interp(backward_time, self.time, self.ex)
         return (forward - backward) / (2*dt)
 
-    def get_activation_signal(self, time, f_stim, u_stim):
+    def get_activation_signal(self):
         sol = integrate.solve_ivp(self.activation_derivative, (0, max(time)), [0, 0], max_step=0.01)
         return sol.t, sol.y
+
+    def get_activation(self, t):
+        """
+        :param t: time to evaluate activation signal at
+        :return: linear interpolation of activation signal given by solve_ivp
+        """
+        return np.interp(t, self.t_act, self.y_act)
 
     def activation_derivative(self, t, a):
         """
@@ -102,33 +95,82 @@ class FES_Activation:
         :param a: [a, a_dot]
         :return: [a_dot, a_dot_dot]
         """
-        ex = self.get_excitation_signal(self.f_stim, self.u_stim)
-        print(self.excitation_finite_difference(t, ex))
-        if self.excitation_finite_difference(t, ex) > 0:
+        if self.excitation_finite_difference(t) > 0:
             k1 = self.Te * self.t_rise
             k2 = self.Te + self.t_rise
         else:
             k1 = self.Te * self.t_fall
             k2 = self.Te + self.t_fall
         A = [[0, 1], [-1/k1, -k2/k1]]
-        ex_int = np.interp(t, self.time, ex)
+        ex_int = np.interp(t, self.time, self.ex)
         return np.matmul(A, a) + ex_int*np.array([0, 1/k1])
+
+    def show_curves(self):
+        t, y = self.get_activation_signal()
+        plt.figure()
+        plt.plot(t,y[0,:])
+        # plt.plot(self.time, self.get_activation(self.time))
+        plt.plot(self.time, self.u_stim/self.u_saturation)
+        plt.plot(self.time, self.get_excitation_signal())
+        plt.legend(['Activation', 'FES (normalized)', 'Excitation'])
+        plt.show()
+
+
+class Fitted_Activation:
+    def __init__(self, data_file, width=0.04):
+        """
+        Constructor requires activation fit data
+        :param data_file: path to .csv file containing activation data
+        :param width: optional, set Gaussian width
+        """
+        data = np.loadtxt(data_file, delimiter=',')
+        self.walking_cycle_percent = data[:, 0]
+        self.activation = data[:, 1]
+        self.time = np.arange(0, 1, 0.002)
+        self.centers = np.arange(0, 1, 0.005)
+        self.width = width
+        self.model = Regression(self.walking_cycle_percent, self.activation, self.centers, self.width)
+
+    def show_curves(self):
+        plt.figure()
+        plt.plot(self.walking_cycle_percent, self.activation, 'k')
+        plt.plot(self.time, self.get_activation(self.time), 'r')
+        plt.xlabel('Walking Cycle (%)')
+        plt.ylabel('Activation')
+        plt.legend(['Data', 'Regression'])
+        plt.show()
+
+    def get_activation(self, t):
+        """
+        :param t: time point at which to evaluate activation, in percentage of walking cycle
+        :return: activation level at that time
+        """
+        a = self.model.eval(t)
+        a[a < 0.002] = 0
+        return a
 
 
 if __name__ == "__main__":
+    # Example FES Activation
     time = np.linspace(0, 2, 100)
     f_stim = 66*np.ones(100)
     u_stim = np.zeros(100)
-    u_stim[25:49] = 50
-    u_stim[75:99] = 50
+    u_stim[25:49] = 40
+    u_stim[75:99] = 40
     # U between 29 and 43
     # F0 = 39.6 Hz
     t_rise = 0.068  # [s]
     t_fall = 0.076  # [s]
-    TA_Activation = FES_Activation(time, u_stim, f_stim, t_rise, t_fall, 0.25)
-    t,y = TA_Activation.get_activation_signal(time, f_stim, u_stim)
-    plt.figure()
-    plt.plot(t,y[0,:])
-    plt.plot(time, u_stim/max(u_stim))
-    plt.plot(time, TA_Activation.get_excitation_signal(f_stim, u_stim))
-    plt.show()
+    FT_percent = 0.25
+    TA_Activation = FES_Activation(time, u_stim, f_stim, t_rise, t_fall, FT_percent)
+    TA_Activation.show_curves()
+
+    # Using fitted activation
+    ga_activation = Fitted_Activation('curve_datasets/gastrocnemius_activation.csv', width=0.06)
+    ga_activation.show_curves()
+    # print(ga_activation.get_activation(0.5))
+
+    sol_activation = Fitted_Activation('curve_datasets/soleus_activation.csv', width=0.09)
+    sol_activation.show_curves()
+
+

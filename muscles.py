@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from excitation_activation import FES_Activation, Fitted_Activation
 import scipy
 from scipy import integrate
 
@@ -129,7 +130,7 @@ class Hill_Type_Model:
 
     def simulate(self):
         length = self.resting_length_tendon+self.resting_length_muscle
-        
+
         def velocity_wrapper(t,x):
             return self.get_velocity_CE(x, self.norm_tendon_length(length, x))
 
