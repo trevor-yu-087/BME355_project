@@ -146,26 +146,5 @@ class Hill_Type_Model:
         plt.xlabel('Time (s)')
         plt.show()
 
-# def plot_curves():
-#     """
-#     Plot force-length, force-velocity, SE, and PE curves.
-#     """
-#     lm = np.arange(0, 1.8, .01)
-#     vm = np.arange(-1.2, 1.2, .01)
-#     lt = np.arange(0, 1.07, .01)
-#     plt.subplot(2,1,1)
-#     plt.plot(lm, force_length_muscle(lm), 'r')
-#     plt.plot(lm, force_length_parallel(lm), 'g')
-#     plt.plot(lt, force_length_tendon(lt), 'b')
-#     plt.legend(('CE', 'PE', 'SE'))
-#     plt.xlabel('Normalized length')
-#     plt.ylabel('Force scale factor')
-#     plt.subplot(2, 1, 2)
-#     plt.plot(vm, force_velocity_muscle(vm), 'k')
-#     plt.xlabel('Normalized muscle velocity')
-#     plt.ylabel('Force scale factor')
-#     plt.tight_layout()
-#     plt.show()
-
 tibialis_anterior = Hill_Type_Model("Tibialis Anterior", 0.4,0.3,0.1)
 tibialis_anterior.simulate()
