@@ -163,14 +163,18 @@ if __name__ == "__main__":
     t_fall = 0.076  # [s]
     FT_percent = 0.25
     TA_Activation = FES_Activation(time, u_stim, f_stim, t_rise, t_fall, FT_percent)
-    TA_Activation.show_curves()
+    # TA_Activation.show_curves()
 
     # Using fitted activation
     ga_activation = Fitted_Activation('curve_datasets/gastrocnemius_activation.csv', width=0.06)
-    ga_activation.show_curves()
+    # ga_activation.show_curves()
     # print(ga_activation.get_activation(0.5))
 
     sol_activation = Fitted_Activation('curve_datasets/soleus_activation.csv', width=0.09)
-    sol_activation.show_curves()
+    # sol_activation.show_curves()
+
+    data = np.loadtxt('curve_datasets/artificial_stimulation_regimen.csv', delimiter=',')
+    plt.plot(data[:,0], data[:,1])
+    plt.show()
 
 
