@@ -88,6 +88,13 @@ class FES_Activation:
         """
         return np.interp(t, self.t_act, self.y_act)
 
+    def get_excitation(self, t):
+        """
+        :param t: time to evaluate excitation signal at
+        :return: linear interpolation of excitation signal
+        """
+        return np.interp(t, self.time, self.ex)
+
     def activation_derivative(self, t, a):
         """
         Activation derivative for the ODE of the 2nd block in Hammerstein model
