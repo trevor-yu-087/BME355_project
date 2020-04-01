@@ -113,7 +113,7 @@ class Hill_Type_Model:
             return self.get_velocity_CE(x, self.total_length_tendon(x, self.lOpt))
 
         times = [0,2]
-        solution = scipy.integrate.solve_ivp(velocity_wrapper, times, [5], rtol = 1e-8, atol = 1e-7)
+        solution = scipy.integrate.solve_ivp(velocity_wrapper, times, [0], rtol = 1e-8, atol = 1e-7)
         print(solution)
         plt.subplot(2,1,1)
         plt.plot(solution.t, solution.y.T)
