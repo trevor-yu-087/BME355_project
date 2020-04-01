@@ -20,7 +20,21 @@ class Hill_Type_Model:
         :param Vmax: maximum velocity
         :param p_angle: penation angle
         """
-        self.alpha = alpha
+
+
+        # TODO figure out why these particular activations break it
+        # self.alpha = lambda t: .2 - np.cos(t) * .2
+        # self.alpha = lambda t: np.sin(t * 20) * .4 + .4
+
+        # TODO figured it has something to do with an activation going from non-zero to zero.
+        # TODO So I stopped alpha from becoming zero but hopefully will fix that eventually
+        self.alpha = lambda t: max(alpha(t), .01)
+
+        # all these work
+        # self.alpha = lambda t: np.sin(t) * .2
+        # self.alpha = lambda t: min(.5 * t, 1)
+        # self.alpha = lambda t: 0 if t < 1 else 1
+
 
         if(muscle == "Tibialis Anterior"):
             # CONSTANTS FOR TibAnt
@@ -31,7 +45,8 @@ class Hill_Type_Model:
             self.lOpt = 0.21
             self.w = 0.49
             self.Vmax = 6
-            self.p_angle = 5
+            self.p_angle = 5 * np.pi / 180
+            self.lsl = .1 #TODO find real value for this
         elif(muscle == "Soleus"):
             # CONSTANTS FOR Soleus
             self.Fmax = 4219
@@ -41,7 +56,8 @@ class Hill_Type_Model:
             self.lOpt = 0.266
             self.w = 0.8
             self.Vmax = 6.4
-            self.p_angle = 25
+            self.p_angle = 25 * np.pi / 180
+            self.lsl = .1 #TODO find real value for this
         elif(muscle == "Gastrocnemius"):
             # CONSTANTS FOR gastrocnemius
             self.Fmax = 1816
@@ -51,7 +67,8 @@ class Hill_Type_Model:
             self.lOpt = 0.411
             self.w = 0.61
             self.Vmax = 4
-            self.p_angle = 17
+            self.p_angle = 17 * np.pi / 180
+            self.lsl = .1 #TODO find real value for this
 
     def tendon_dynamics(self, lt):
         # equations 7 & 8 in source [3]
@@ -65,67 +82,79 @@ class Hill_Type_Model:
 
     def get_force_length(self, lm):
         # source [2], equation 2
-        return ((-1/self.w**2)*(lm/self.lOpt)**2 + (2/(self.w**2))*(lm/self.lOpt) - 1/(self.w**2) + 1)
+        if lm < 0: return 0
+        return np.max(((-1/self.w**2)*(lm/self.lOpt)**2 + (2/(self.w**2))*(lm/self.lOpt) - 1/(self.w**2) + 1), 0)
 
     def get_force_velocity(self, vm):
         # source [2], equation 3
         N = 1.5
         if vm < 0:
-            return (self.Vmax + vm)/(self.Vmax - self.k_curve*vm)
+            force = (self.Vmax + vm)/(self.Vmax - self.k_curve*vm)
         else:
-            return (N-((N-1)*(self.Vmax+vm)) / (7.56*self.k_curve*vm + self.Vmax))
+            force =  (N-((N-1)*(self.Vmax+vm)) / (7.56*self.k_curve*vm + self.Vmax))
+        return max(force, 0)
 
-    def get_force_contractile_element(self, lm, vm):
+    def get_force_contractile_element(self, t, lm, vm):
         # source: [2], equation 1
-        return self.alpha*self.Fmax*lm*self.get_force_velocity(vm)
+        return max(self.alpha(t)*self.Fmax*self.get_force_length(lm)*self.get_force_velocity(vm), 0)
 
-    def get_force_parallel_elastic(self,lt):
+    def get_force_parallel_elastic(self,lm):
         # source [2], equation 4
-        if lt <= (self.lOpt*(1-self.w)):
-            return (self.Fmax*(lt-self.lOpt)/(self.lOpt*self.w))**2
+        if lm <= (self.lOpt*(1-self.w)):
+            return (self.Fmax*(lm-self.lOpt)/(self.lOpt*self.w))**2
         else: return 0
 
-    def get_force_series_elastic(self, lm, lt, vm):
+    def get_force_muscle(self, t, lm, vm):
         # source: [3], equation adapted from simulation plan
-        return ((self.get_force_contractile_element(lm,vm) + self.get_force_parallel_elastic(lt))*np.cos(self.get_angle(lm)))
+        return ((self.get_force_contractile_element(t, lm, vm) + self.get_force_parallel_elastic(lm))*np.cos(self.get_angle(lm)))
+
+    def get_force_series_elastic_2(self, lm):
+        # source: [3], equation 7
+        result = self.Fmax * (np.exp(self.k_shape * (self.length_tendon(lm) - self.lsl) / (self.lam_ref * self.lsl)) - 1) / (np.exp(self.k_shape) - 1)
+        return result
 
     def get_angle(self, lm):
         # Source: [3] equation 11
         return np.arcsin((self.lOpt*np.sin(self.p_angle))/lm)
 
-    def get_velocity_CE(self, lm, lt):
-        sol = scipy.optimize.fsolve(self.model_dynamics, [0], (lm,lt))
+    def get_velocity_CE(self, t, lm):
+        sol = scipy.optimize.fsolve(self.model_dynamics, [0], (lm,t))
+        #print("velocity")
         #print (sol)
         return sol
 
-    def total_length_tendon(self, lm, lt):
+    def length_tendon(self, lm):
         #Source: [3] equation 10
-        return lt+lm*np.cos(self.get_angle(lm))
+        return self.lsl + self.lOpt - lm
 
 
-    def model_dynamics(self, vm, lm, lt):
+    def model_dynamics(self, vm, lm, t):
         #Equation 9 source 3
-        return self.get_force_series_elastic(lm,lt,vm)
+        return self.get_force_series_elastic_2(lm) - self.get_force_muscle(t, lm, vm)
 
-    def simulate(self):
+    def simulate(self, times):
 
         def velocity_wrapper(t,x):
-            return self.get_velocity_CE(x, self.total_length_tendon(x, self.lOpt))
+            return self.get_velocity_CE(t, x)
 
-        times = [0,2]
-        solution = scipy.integrate.solve_ivp(velocity_wrapper, times, [0], rtol = 1e-8, atol = 1e-7)
-        print(solution)
-        plt.subplot(2,1,1)
+        solution = scipy.integrate.solve_ivp(velocity_wrapper, times, [self.lOpt + .001], max_step=.001, rtol = 1e-8, atol = 1e-7)
+        plt.subplot(3,1,1)
         plt.plot(solution.t, solution.y.T)
+
         plt.ylabel('Normalized Length of CE')
-        plt.subplot(2,1,2)
-        plt.plot(solution.t, np.array(self.get_force_length(solution.y.T)))
+        plt.subplot(3,1,2)
+        plt.plot(solution.t, np.array(self.get_force_series_elastic_2(solution.y.T)))
         plt.ylabel('Force (N)')
         plt.xlabel('Time (s)')
+        plt.subplot(3, 1, 3)
+        plt.plot(solution.t, list(map(self.alpha, solution.t)))
+        plt.ylabel("activation")
         plt.show()
 
-tibialis_anterior = Hill_Type_Model("Tibialis Anterior", 0.5)
-tibialis_anterior.simulate()
 
-gastrocnemius = Hill_Type_Model("Gastrocnemius", 0.2)
-gastrocnemius.simulate()
+if __name__ == "__main__":
+    tibialis_anterior = Hill_Type_Model("Tibialis Anterior", lambda t: 0.5)
+    tibialis_anterior.simulate()
+
+    gastrocnemius = Hill_Type_Model("Gastrocnemius", lambda t: 0.2)
+    gastrocnemius.simulate()
