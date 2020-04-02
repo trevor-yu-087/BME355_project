@@ -148,7 +148,6 @@ class Hill_Type_Model:
             vm = self.get_velocity_CE(t, x[0])
             if energy:
                 x = [vm[0], self.E_dot(t, x[0], vm[0])]
-                print(x)
                 return x
             else:
                 return vm
@@ -183,18 +182,10 @@ class Hill_Type_Model:
         ACT = self.alpha(t)
         h_AM = 1.28 * self.FT + 25
         A = STIM if STIM > ACT else (STIM + ACT) / 2
-        print(h_AM)
-        print(A)
         S = 1.5
         F_ISO = self.get_force_length(lm) / lm
-        print(F_ISO)
         if lm <= self.lOpt:
             activation_maintenance = h_AM * (A ** .6) * S
-            print("hi1")
-            print(h_AM)
-            print(A)
-            print(F_ISO)
-            print(activation_maintenance)
             if vm <= 0:
                 shorten_lengthen = (-(vm/self.lOpt) * (100 - self.FT) / self.Vmax - 153 * (vm/self.lOpt) * self.FT / (100 * self.Vmax)) * (
                             A ** 2) * S
@@ -202,7 +193,6 @@ class Hill_Type_Model:
                 shorten_lengthen = 400 * (vm/self.lOpt) * A * S / (vm/self.lOpt)
         else:
             activation_maintenance = (0.4 * h_AM + 0.6 * h_AM * F_ISO) * (A ** .6)
-            print("hi2")
             if vm <= 0:
                 shorten_lengthen = (-(vm/self.lOpt)* (100 - self.FT) / self.Vmax - 153 * (vm/self.lOpt) * self.FT / (
                             100 * self.Vmax)) * F_ISO * (A ** 2) * S
@@ -210,12 +200,6 @@ class Hill_Type_Model:
                 shorten_lengthen = 400 * (vm/self.lOpt) * A * S * F_ISO / (vm/self.lOpt)
 
         mechanical_work = -(self.get_force_contractile_element(t, lm, vm) * vm) / self.mass
-        print("activation_maintenance")
-        print(activation_maintenance)
-        print("shorten_lengthen")
-        print(shorten_lengthen)
-        print("mechaanical_work")
-        print(mechanical_work)
         return activation_maintenance + shorten_lengthen + mechanical_work
 
 
