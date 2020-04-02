@@ -99,7 +99,7 @@ if __name__ == '__main__':
     # plt.plot(t, list(map(ga_activation.get_activation, t)))
     # plt.show()
     gastrocnemius = Hill_Type_Model("Gastrocnemius", ga_activation.get_activation)
-    gastrocnemius.simulate([0, .8])
+    gastrocnemius.simulate([0.6, 1])
     tibialis = Hill_Type_Model("Tibialis Anterior", enveloped_activation.get_activation)
     tibialis.simulate([0.6, 1])
     """
