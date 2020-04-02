@@ -142,7 +142,7 @@ class Hill_Type_Model:
         #Equation 9 source 3
         return self.get_force_series_elastic_2(lm) - self.get_force_muscle(t, lm, vm)
 
-    def simulate(self, times, energy=False):
+    def simulate(self, times, energy=False, plot=False):
 
         def velocity_wrapper(t,x):
             vm = self.get_velocity_CE(t, x[0])
@@ -158,21 +158,24 @@ class Hill_Type_Model:
             initial_state = [self.lOpt + .001]
 
         solution = scipy.integrate.solve_ivp(velocity_wrapper, times, initial_state, max_step=.001, rtol = 1e-8, atol = 1e-7)
+        force = self.get_force_series_elastic_2(solution.y.T[:, 0])
+        if plot:
+            plt.subplot(4 if energy else 3,1,1)
+            plt.plot(solution.t, solution.y.T[:, 0])
+            plt.ylabel('Normalized Length of CE')
+            plt.subplot(4 if energy else 3,1,2)
+            plt.plot(solution.t, np.array(force))
+            plt.ylabel('Force (N)')
+            plt.xlabel('Time (s)')
+            plt.subplot(4 if energy else 3, 1, 3)
+            plt.plot(solution.t, list(map(self.alpha, solution.t)))
+            plt.ylabel("activation")
+            if energy:
+                plt.subplot(4, 1, 4)
+                plt.plot(solution.t, solution.y.T[:, 1])
+            plt.show()
 
-        plt.subplot(4 if energy else 3,1,1)
-        plt.plot(solution.t, solution.y.T[:, 0])
-        plt.ylabel('Normalized Length of CE')
-        plt.subplot(4 if energy else 3,1,2)
-        plt.plot(solution.t, np.array(self.get_force_series_elastic_2(solution.y.T[:, 0])))
-        plt.ylabel('Force (N)')
-        plt.xlabel('Time (s)')
-        plt.subplot(4 if energy else 3, 1, 3)
-        plt.plot(solution.t, list(map(self.alpha, solution.t)))
-        plt.ylabel("activation")
-        if energy:
-            plt.subplot(4, 1, 4)
-            plt.plot(solution.t, solution.y.T[:, 1])
-        plt.show()
+        return solution, force
 
     def E_dot(self, t, lm, vm):
         activation_maintenance = 0
