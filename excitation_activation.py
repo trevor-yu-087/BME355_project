@@ -78,7 +78,7 @@ class FES_Activation:
         return (forward - backward) / (2*dt)
 
     def get_activation_signal(self):
-        sol = integrate.solve_ivp(self.activation_derivative, (0, max(time)), [0, 0], max_step=0.01)
+        sol = integrate.solve_ivp(self.activation_derivative, (min(self.time), max(self.time)), [0, 0], max_step=0.01)
         return sol.t, sol.y
 
     def get_activation(self, t):
