@@ -28,7 +28,7 @@ class Hill_Type_Model:
 
         # TODO figured it has something to do with an activation going from non-zero to zero.
         # TODO So I stopped alpha from becoming zero but hopefully will fix that eventually
-        self.alpha = lambda t: max(alpha(t), .01)
+        self.alpha = lambda t: max(alpha(t), .001)
 
         # all these work
         # self.alpha = lambda t: np.sin(t) * .2
