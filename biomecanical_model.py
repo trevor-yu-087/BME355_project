@@ -52,11 +52,17 @@ def simulate(F_ta, F_gs, F_so, start, times, plot=False):
     if plot:
         plt.subplot(3, 1, 1)
         plt.plot(time, solution[:, 0])
+        plt.ylabel("ankle angle degrees")
         plt.subplot(3, 1, 2)
         plt.plot(time, solution[:, 1])
+        plt.ylabel("ankle angular velocity degrees/second")
         plt.subplot(3, 1, 3)
         plt.plot(time, F_ta(time))
         plt.plot(time, F_gs(time))
+        plt.plot(time, F_so(time))
+        plt.ylabel("force N")
+        plt.xlabel("time seconds")
+        plt.legend(["Tibialis Anterior", "Gastrocnemius", "Soleus"])
         plt.show()
 
     return solution
@@ -74,6 +80,6 @@ if __name__ == "__main__":
 
     F_ta = interpolate.interp1d(ta_sol.t, ta_force)
     F_gs = interpolate.interp1d(gs_sol.t, gs_force)
-    F_so = lambda t: 0.01
+    F_so = interpolate.interp1d([0, 1], [500, 200])
 
     simulate(F_ta, F_gs, F_so, [0, 0], [0, 1], plot=True)
