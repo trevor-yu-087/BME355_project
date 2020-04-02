@@ -46,13 +46,15 @@ class Hill_Type_Model:
             self.k_shape = 2.73
             self.k_curve = 6.6
             self.lam_ref = 0.045
-            self.lOpt = 0.21
+            self.lOpt = 0.21  # m
             self.w = 0.49
             self.Vmax = 6
             self.p_angle = 5 * np.pi / 180
-            self.lsl = .1 # TODO find real value for this
+            self.lsl = 0.24
             self.FT = 25
-            self.mass = .2 # TODO find real value
+            dm = 1.054  # g/cm3
+            PCSA = 18.52    # cm2
+            self.mass = 100*self.lOpt * dm * PCSA / 1000  # kg
         elif(muscle == "Soleus"):
             # CONSTANTS FOR Soleus
             self.Fmax = 4219
@@ -63,7 +65,7 @@ class Hill_Type_Model:
             self.w = 0.8
             self.Vmax = 6.4
             self.p_angle = 25 * np.pi / 180
-            self.lsl = .1 #TODO find real value for this
+            self.lsl = 0.26
             self.FT = 20
             self.mass = None # not going to use this so we don't care that we don't have it
         elif(muscle == "Gastrocnemius"):
@@ -76,7 +78,7 @@ class Hill_Type_Model:
             self.w = 0.61
             self.Vmax = 4
             self.p_angle = 17 * np.pi / 180
-            self.lsl = .1 #TODO find real value for this
+            self.lsl = .4
             self.FT = 50
             self.mass = None # this one is not used so we don't care that we don't have it
 

@@ -82,12 +82,10 @@ if __name__ == '__main__':
     amp_rect = amplitude * np.ones(len(time))
     f_rect = fs * np.ones(len(time))
     rectangular_activation = FES_Activation(time, amp_rect, f_rect, 0.068, 0.076, 0.25)
-    # rectangular_activation.show_curves()
-
+    rectangular_activation.show_curves()
 
     # Enveloped naturalistic
     fs = 40  # Hz
-    pulse_width = 300  # microseconds
     amplitude = 41  # V
     amp_enveloped = get_fitted_natural_stimulation(time, scale=amplitude)
     f_enveloped = fs * np.ones(len(time))
@@ -102,7 +100,8 @@ if __name__ == '__main__':
     # plt.show()
     gastrocnemius = Hill_Type_Model("Gastrocnemius", ga_activation.get_activation)
     gastrocnemius.simulate([0, .8])
-
+    tibialis = Hill_Type_Model("Tibialis Anterior", enveloped_activation.get_activation)
+    tibialis.simulate([0.6, 1])
     """
     Simulate models with different activation profiles
     """
