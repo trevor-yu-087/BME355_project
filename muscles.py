@@ -6,7 +6,7 @@ from scipy import integrate
 
 class Hill_Type_Model:
 
-    def __init__(self, muscle, alpha):
+    def __init__(self, muscle, alpha, stim=None):
         """
         parameters chosen based on participant 3 in supplemntary materials (source [2])
         :param alpha: FES activation (from our boi Trev)
@@ -35,6 +35,10 @@ class Hill_Type_Model:
         # self.alpha = lambda t: min(.5 * t, 1)
         # self.alpha = lambda t: 0 if t < 1 else 1
 
+        if stim is None:
+            self.stim = self.alpha
+        else:
+            self.stim = lambda t: max(stim(t), .01)
 
         if(muscle == "Tibialis Anterior"):
             # CONSTANTS FOR TibAnt
@@ -46,7 +50,9 @@ class Hill_Type_Model:
             self.w = 0.49
             self.Vmax = 6
             self.p_angle = 5 * np.pi / 180
-            self.lsl = .1 #TODO find real value for this
+            self.lsl = .1 # TODO find real value for this
+            self.FT = 25
+            self.mass = .2 # TODO find real value
         elif(muscle == "Soleus"):
             # CONSTANTS FOR Soleus
             self.Fmax = 4219
@@ -58,6 +64,8 @@ class Hill_Type_Model:
             self.Vmax = 6.4
             self.p_angle = 25 * np.pi / 180
             self.lsl = .1 #TODO find real value for this
+            self.FT = 20
+            self.mass = None # not going to use this so we don't care that we don't have it
         elif(muscle == "Gastrocnemius"):
             # CONSTANTS FOR gastrocnemius
             self.Fmax = 1816
@@ -69,6 +77,8 @@ class Hill_Type_Model:
             self.Vmax = 4
             self.p_angle = 17 * np.pi / 180
             self.lsl = .1 #TODO find real value for this
+            self.FT = 50
+            self.mass = None # this one is not used so we don't care that we don't have it
 
     def tendon_dynamics(self, lt):
         # equations 7 & 8 in source [3]
@@ -132,29 +142,86 @@ class Hill_Type_Model:
         #Equation 9 source 3
         return self.get_force_series_elastic_2(lm) - self.get_force_muscle(t, lm, vm)
 
-    def simulate(self, times):
+    def simulate(self, times, energy=False):
 
         def velocity_wrapper(t,x):
-            return self.get_velocity_CE(t, x)
+            vm = self.get_velocity_CE(t, x[0])
+            if energy:
+                x = [vm[0], self.E_dot(t, x[0], vm[0])]
+                print(x)
+                return x
+            else:
+                return vm
 
-        solution = scipy.integrate.solve_ivp(velocity_wrapper, times, [self.lOpt + .001], max_step=.001, rtol = 1e-8, atol = 1e-7)
-        plt.subplot(3,1,1)
-        plt.plot(solution.t, solution.y.T)
+        if energy:
+            initial_state = [self.lOpt + .001, 0]
+        else:
+            initial_state = [self.lOpt + .001]
 
+        solution = scipy.integrate.solve_ivp(velocity_wrapper, times, initial_state, max_step=.001, rtol = 1e-8, atol = 1e-7)
+
+        plt.subplot(4 if energy else 3,1,1)
+        plt.plot(solution.t, solution.y.T[:, 0])
         plt.ylabel('Normalized Length of CE')
-        plt.subplot(3,1,2)
-        plt.plot(solution.t, np.array(self.get_force_series_elastic_2(solution.y.T)))
+        plt.subplot(4 if energy else 3,1,2)
+        plt.plot(solution.t, np.array(self.get_force_series_elastic_2(solution.y.T[:, 0])))
         plt.ylabel('Force (N)')
         plt.xlabel('Time (s)')
-        plt.subplot(3, 1, 3)
+        plt.subplot(4 if energy else 3, 1, 3)
         plt.plot(solution.t, list(map(self.alpha, solution.t)))
         plt.ylabel("activation")
+        if energy:
+            plt.subplot(4, 1, 4)
+            plt.plot(solution.t, solution.y.T[:, 1])
         plt.show()
+
+    def E_dot(self, t, lm, vm):
+        activation_maintenance = 0
+        shorten_lengthen = 0
+        mechanical_work = 0
+        STIM = self.stim(t)
+        ACT = self.alpha(t)
+        h_AM = 1.28 * self.FT + 25
+        A = STIM if STIM > ACT else (STIM + ACT) / 2
+        print(h_AM)
+        print(A)
+        S = 1.5
+        F_ISO = self.get_force_length(lm) / lm
+        print(F_ISO)
+        if lm <= self.lOpt:
+            activation_maintenance = h_AM * (A ** .6) * S
+            print("hi1")
+            print(h_AM)
+            print(A)
+            print(F_ISO)
+            print(activation_maintenance)
+            if vm <= 0:
+                shorten_lengthen = (-(vm/self.lOpt) * (100 - self.FT) / self.Vmax - 153 * (vm/self.lOpt) * self.FT / (100 * self.Vmax)) * (
+                            A ** 2) * S
+            else:
+                shorten_lengthen = 400 * (vm/self.lOpt) * A * S / (vm/self.lOpt)
+        else:
+            activation_maintenance = (0.4 * h_AM + 0.6 * h_AM * F_ISO) * (A ** .6)
+            print("hi2")
+            if vm <= 0:
+                shorten_lengthen = (-(vm/self.lOpt)* (100 - self.FT) / self.Vmax - 153 * (vm/self.lOpt) * self.FT / (
+                            100 * self.Vmax)) * F_ISO * (A ** 2) * S
+            else:
+                shorten_lengthen = 400 * (vm/self.lOpt) * A * S * F_ISO / (vm/self.lOpt)
+
+        mechanical_work = -(self.get_force_contractile_element(t, lm, vm) * vm) / self.mass
+        print("activation_maintenance")
+        print(activation_maintenance)
+        print("shorten_lengthen")
+        print(shorten_lengthen)
+        print("mechaanical_work")
+        print(mechanical_work)
+        return activation_maintenance + shorten_lengthen + mechanical_work
 
 
 if __name__ == "__main__":
-    tibialis_anterior = Hill_Type_Model("Tibialis Anterior", lambda t: 0.5)
-    tibialis_anterior.simulate()
+    tibialis_anterior = Hill_Type_Model("Tibialis Anterior", lambda t: np.sin(t * 20))
+    tibialis_anterior.simulate([0, .5], energy=True)
 
     gastrocnemius = Hill_Type_Model("Gastrocnemius", lambda t: 0.2)
-    gastrocnemius.simulate()
+    gastrocnemius.simulate([0, .5])
