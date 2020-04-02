@@ -13,8 +13,6 @@ def state_equation(t, x):
     :return: x_dot, [angular velocity, angular acceleration]
     """
     angular_velocity = x[1]
-    print(t)
-    print(x[0])
     angular_acceleration = (F_ta(t) * d_ta(x[0]) - F_gs(t) * d_at(x[0]) - F_so(t) * d_at(
         x[0]) - 1.05 * 9.81 * 0.05609 * np.cos(np.pi * x[0] / 180)) / 0.004248
     return [angular_velocity, angular_acceleration]
@@ -42,8 +40,8 @@ d_ta = interpolate.interp1d(TA_moment_arms[:, 0], TA_moment_arms[:, 1])
 d_at = interpolate.interp1d(AT_moment_arms[:, 0], TA_moment_arms[:, 1])
 
 
-def hit_max(t, x): return min(x[0] - 29, 0)
-def hit_min(t, x): return max(x[0] + 14, 0)
+def hit_max(t, x): return min(x[0] - 30, 0)
+def hit_min(t, x): return max(x[0] + 15, 0)
 hit_max.terminal = True
 hit_min.terminal = True
 
@@ -53,14 +51,12 @@ time = []
 solution = []
 while(t < 10):
     sol = solve_ivp(state_equation, [t, 10], start, max_step=.001, events=(hit_max, hit_min))
-    t = sol.t[-1] + .01
-    start = [sol.y[0, -1] - .1 if sol.y[0, -1] > 0 else sol.y[0, -1] + .1, 0]
+    t = sol.t[-1] + .001
+    start = [29.99 if sol.y[0, -1] > 0 else -14.99, 0]
     [time.append(t) for t in sol.t]
     [solution.append(x) for x in np.transpose(sol.y)]
-    print(t)
 
 solution = np.array(solution)
-print(solution)
 plt.subplot(3, 1, 1)
 plt.plot(time, solution[:, 0])
 plt.subplot(3, 1, 2)

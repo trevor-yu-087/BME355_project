@@ -61,10 +61,14 @@ if __name__ == '__main__':
     plt.legend(['gastroc act', 'sol act', 'angle', 'TA activation profile'])
     plt.show()
 
-
     """
     Make muscle objects for different simulations
     """
+    # t = np.arange(0, 2, .01)
+    # plt.plot(t, list(map(ga_activation.get_activation, t)))
+    # plt.show()
+    gastrocnemius = Hill_Type_Model("Gastrocnemius", ga_activation.get_activation)
+    gastrocnemius.simulate([0, .8])
 
     """
     Simulate models with different activation profiles
