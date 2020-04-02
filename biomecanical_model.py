@@ -7,11 +7,13 @@ from muscles import Hill_Type_Model
 
 # J \ddot{\theta} = F_{ta}d_{ta} - F_{gs} d_{ac} - F_{so}d_{ac} - F_g d_{cm}%0
 
-TA_moment_arms = np.array([[-15.22613532, 0.05991416309],
+TA_moment_arms = np.array([[-25.92749283, 0.07886433593],
+                           [-15.22613532, 0.05991416309],
                            [-0.1241071567, 0.04886266094],
                            [14.84963047, 0.0424248927],
                            [30.12968501, 0.04027896996]])
-AT_moment_arms = np.array([[-15.02539273, 0.05385414642],
+AT_moment_arms = np.array([[-25.83478502, 0.04865254761],
+                           [-15.02539273, 0.05385414642],
                            [0.1099468113, 0.06001116785],
                            [14.95690127, 0.06678542524],
                            [30.18731340, 0.07030750473]])
@@ -35,7 +37,7 @@ def simulate(F_ta, F_gs, F_so, start, times, plot=False):
         return [angular_velocity, angular_acceleration]
 
     def hit_max(t, x): return min(x[0] - 29, 0)
-    def hit_min(t, x): return max(x[0] + 14, 0)
+    def hit_min(t, x): return max(x[0] + 24, 0)
     hit_max.terminal = True
     hit_min.terminal = True
 
@@ -44,7 +46,7 @@ def simulate(F_ta, F_gs, F_so, start, times, plot=False):
     while(times[0] < times[1]):
         sol = solve_ivp(state_equation, times, start, max_step=.001, events=(hit_max, hit_min))
         times[0] = sol.t[-1] + .001
-        start = [29 if sol.y[0, -1] > 0 else -14, 0]
+        start = [28.99 if sol.y[0, -1] > 0 else -23.99, 0]
         [time.append(t) for t in sol.t]
         [solution.append(x) for x in np.transpose(sol.y)]
 
@@ -70,7 +72,7 @@ def simulate(F_ta, F_gs, F_so, start, times, plot=False):
 
 if __name__ == "__main__":
     ta = Hill_Type_Model("Tibialis Anterior", lambda t: t)
-    gs = Hill_Type_Model("Gastrocnemius", lambda t: 1 - t)
+    gs = Hill_Type_Model("Gastrocnemius", lambda t: (1 - t) * .3)
 
     ta_sol, ta_force = ta.simulate([0, 1], plot=True)
     gs_sol, gs_force = gs.simulate([0, 1], plot=True)
@@ -80,6 +82,6 @@ if __name__ == "__main__":
 
     F_ta = interpolate.interp1d(ta_sol.t, ta_force)
     F_gs = interpolate.interp1d(gs_sol.t, gs_force)
-    F_so = interpolate.interp1d([0, 1], [500, 200])
+    F_so = interpolate.interp1d([0, .5, 1], [500, 100, 0])
 
     simulate(F_ta, F_gs, F_so, [0, 0], [0, 1], plot=True)
