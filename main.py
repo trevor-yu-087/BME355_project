@@ -119,7 +119,7 @@ if __name__ == '__main__':
     # t = np.arange(0, 2, .01)
     # plt.plot(t, list(map(ga_activation.get_activation, t)))
     # plt.show()
-    time = [0.6, 1]
+    time = [0, 1]
     # gastrocnemius = Hill_Type_Model("Gastrocnemius", ga_activation.get_activation)
     # ga_sol, ga_force = gastrocnemius.simulate(time)
     # with open("ga_sol.csv", "w") as file:
