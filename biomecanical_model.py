@@ -36,10 +36,12 @@ def simulate(F_ta, F_gs, F_so, start, times, plot=False):
             x[0]) - 1.05 * 9.81 * 0.05609 * np.cos(np.pi * x[0] / 180)) / 0.004248
         return [angular_velocity, angular_acceleration]
 
-    def hit_max(t, x): return min(x[0] - 29, 0)
-    def hit_min(t, x): return max(x[0] + 24, 0)
+    def hit_max(t, x): return min(x[0] - 29, .00001)
+    def hit_min(t, x): return max(x[0] + 24, -0.00001)
     hit_max.terminal = True
     hit_min.terminal = True
+    hit_max.direction = 1.0
+    hit_min.direction = -1.0
 
     time = []
     solution = []

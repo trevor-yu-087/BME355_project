@@ -22,3 +22,5 @@
 #     mechanical_work = -(F_CE * V_CE)/m
 #
 #     return activation_maintenance * shorten_lengthen * mechanical_work
+
+print(1.1%1)

@@ -5,11 +5,12 @@ import numpy as np
 from regression import Regression
 from biomecanical_model import simulate
 from scipy import interpolate
+import csv
 
 
 def process_natural_stim(data_file):
     data = np.loadtxt(data_file, delimiter=',')
-    norm_time = data[:, 0]/max(data[:,0])
+    norm_time = data[:, 0] / max(data[:, 0])
     norm_amp = data[:, 1] / max(data[:, 1])
     # Extracted time from profile in which the envelope occurs
     t_profile = (0, 0.632)
@@ -31,11 +32,14 @@ def get_fitted_natural_stimulation(time, scale=1):
     """
     data = np.loadtxt('curve_datasets/processed_natural_stimulation_2.csv', delimiter=',')
     centers = np.arange(0, 1, 0.005)
-    model = Regression(data[:,0], data[:,1], centers, 0.04)
+    model = Regression(data[:, 0], data[:, 1], centers, 0.092)
     # plt.plot(data[:,0], data[:,1])
+    time = time + .1
+    time = np.roll(time, len(time[time > 1]))
+    time[time > 1] -= 1
     swing_stance_stim = model.eval(time)
     swing_stance_stim[swing_stance_stim < 0] = 0
-    return scale*swing_stance_stim/max(swing_stance_stim)
+    return scale * swing_stance_stim / max(swing_stance_stim)
 
 
 def get_fitted_ankle_angle(time, norm=False):
@@ -54,6 +58,14 @@ def get_fitted_ankle_angle(time, norm=False):
 if __name__ == '__main__':
     duration = 0.4  # seconds, based on 40% of walking cycle at 1 Hz
 
+    time_seconds = np.arange(0, 1.001, .001)
+    # plt.plot(time_seconds , get_fitted_natural_stimulation(time_seconds))
+    # plt.show()
+    Act_Tibialis = interpolate.interp1d(time_seconds, get_fitted_natural_stimulation(time_seconds))
+    Tibialis_Activation = lambda t: Act_Tibialis((t + .25)%1)
+    plt.plot(time_seconds, list(map(Tibialis_Activation, time_seconds)))
+    plt.show()
+
     """
     Make different activation profiles
     """
@@ -62,7 +74,7 @@ if __name__ == '__main__':
     sol_activation = Fitted_Activation('curve_datasets/soleus_activation.csv', width=0.09)
     # sol_activation.show_curves()
 
-    time = np.linspace(0.6, 1, 300)
+    time = np.linspace(0, 1, 300)
     plt.plot(time, ga_activation.get_activation(time))
     plt.plot(time, sol_activation.get_activation(time))
     # ankle_angle = np.loadtxt('curve_datasets/ankle_angle.csv', delimiter=',')
@@ -104,29 +116,51 @@ if __name__ == '__main__':
     # plt.plot(t, list(map(ga_activation.get_activation, t)))
     # plt.show()
     time = [0.6, 1]
-    gastrocnemius = Hill_Type_Model("Gastrocnemius", ga_activation.get_activation)
-    ga_sol, ga_force = gastrocnemius.simulate(time)
-    soleus = Hill_Type_Model("Soleus", sol_activation.get_activation)
-    sol_sol, sol_force = soleus.simulate(time)
-
-    tibialis = Hill_Type_Model("Tibialis Anterior", enveloped_activation.get_activation, stim=enveloped_activation.get_excitation)
+    # gastrocnemius = Hill_Type_Model("Gastrocnemius", ga_activation.get_activation)
+    # ga_sol, ga_force = gastrocnemius.simulate(time)
+    # with open("ga_sol.csv", "w") as file:
+    #     writer = csv.writer(file, delimiter=",")
+    #     writer.writerow(["time", "force"])
+    #     for t, f in zip(ga_sol.t, ga_force):
+    #         writer.writerow([t, f])
+    # soleus = Hill_Type_Model("Soleus", sol_activation.get_activation)
+    # sol_sol, sol_force = soleus.simulate(time)
+    # with open("sol_sol.csv", "w") as file:
+    #     writer = csv.writer(file, delimiter=",")
+    #     writer.writerow(["time", "force"])
+    #     for t, f in zip(sol_sol.t, sol_force):
+    #         writer.writerow([t, f])
+    tibialis = Hill_Type_Model("Tibialis Anterior", Tibialis_Activation, stim=enveloped_activation.get_excitation)
     ta_sol, ta_force = tibialis.simulate(time, energy=True)
+    with open("ta_sol.csv", "w") as file:
+        writer = csv.writer(file, delimiter=",")
+        writer.writerow(["time", "force"])
+        for t, f in zip(ta_sol.t, ta_force):
+            writer.writerow([t, f])
     """
     Simulate models with different activation profiles
     """
-
     F_ta = interpolate.interp1d(ta_sol.t, ta_force)
-    F_ga = interpolate.interp1d(ga_sol.t, ga_force)
-    F_sol = interpolate.interp1d(sol_sol.t, sol_force)
+    # F_ga = interpolate.interp1d(ga_sol.t, ga_force)
+    # F_sol = interpolate.interp1d(sol_sol.t, sol_force)
+
+    # ta_sol = np.loadtxt("ta_sol.csv", delimiter=',', skiprows=1)
+    ga_sol = np.loadtxt("ga_sol.csv", delimiter=',', skiprows=1)
+    sol_sol = np.loadtxt("sol_sol.csv", delimiter=',', skiprows=1)
+    #
+    # F_ta = interpolate.interp1d(ta_sol[:, 0], ta_sol[:, 1])
+    F_ga = interpolate.interp1d(ga_sol[:, 0], ga_sol[:, 1])
+    F_sol = interpolate.interp1d(sol_sol[:, 0], sol_sol[:, 1])
+
     ICs = [get_fitted_ankle_angle(min(time), norm=False), 0]
     bm_time, bm_solution = simulate(F_ta, F_ga, F_sol, ICs, time, plot=True)
-    simulated_angle = bm_solution.y[0, :]
+    simulated_angle = bm_solution[:, 0]
     actual_angle = get_fitted_ankle_angle(bm_time)
     plt.plot(bm_time, simulated_angle, 'r')
-    plt.plot(bm_time, simulated_angle, 'k')
+    plt.plot(bm_time, actual_angle, 'k')
     plt.xlabel('Time [s]')
     plt.ylabel('Angle [degrees]')
-    plt.legend('Simulation', 'Actual')
+    plt.legend(['Simulation', 'Actual'])
     plt.show()
 
     """
