@@ -171,10 +171,11 @@ class Hill_Type_Model:
             plt.xlabel('Time (s)')
             plt.subplot(4 if energy else 3, 1, 3)
             plt.plot(solution.t, list(map(self.alpha, solution.t)))
-            plt.ylabel("activation")
+            plt.ylabel("Activation")
             if energy:
                 plt.subplot(4, 1, 4)
                 plt.plot(solution.t, solution.y.T[:, 1])
+                plt.ylabel('Energy [J]')
             plt.show()
 
         return solution, force
