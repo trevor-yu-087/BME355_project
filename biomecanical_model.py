@@ -67,7 +67,7 @@ def simulate(F_ta, F_gs, F_so, start, times, plot=False):
         plt.legend(["Tibialis Anterior", "Gastrocnemius", "Soleus"])
         plt.show()
 
-    return solution
+    return time, solution
 
 
 if __name__ == "__main__":
