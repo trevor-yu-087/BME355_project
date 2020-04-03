@@ -109,7 +109,7 @@ if __name__ == '__main__':
     soleus = Hill_Type_Model("Soleus", sol_activation.get_activation)
     sol_sol, sol_force = soleus.simulate(time)
 
-    tibialis = Hill_Type_Model("Tibialis Anterior", enveloped_activation.get_activation)
+    tibialis = Hill_Type_Model("Tibialis Anterior", enveloped_activation.get_activation, stim=enveloped_activation.get_excitation)
     ta_sol, ta_force = tibialis.simulate(time, energy=True)
     """
     Simulate models with different activation profiles
