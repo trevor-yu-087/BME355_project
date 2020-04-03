@@ -32,11 +32,8 @@ def get_fitted_natural_stimulation(time, scale=1):
     """
     data = np.loadtxt('curve_datasets/processed_natural_stimulation_2.csv', delimiter=',')
     centers = np.arange(0, 1, 0.005)
-    model = Regression(data[:, 0], data[:, 1], centers, 0.092)
+    model = Regression(data[:,0], data[:,1], centers, 0.092)
     # plt.plot(data[:,0], data[:,1])
-    time = time + .1
-    time = np.roll(time, len(time[time > 1]))
-    time[time > 1] -= 1
     swing_stance_stim = model.eval(time)
     swing_stance_stim[swing_stance_stim < 0] = 0
     return scale * swing_stance_stim / max(swing_stance_stim)
@@ -62,7 +59,7 @@ if __name__ == '__main__':
     # plt.plot(time_seconds , get_fitted_natural_stimulation(time_seconds))
     # plt.show()
     Act_Tibialis = interpolate.interp1d(time_seconds, get_fitted_natural_stimulation(time_seconds))
-    Tibialis_Activation = lambda t: Act_Tibialis((t + .25)%1)
+    Tibialis_Activation = lambda t: Act_Tibialis((t + .1)%1)
     plt.plot(time_seconds, list(map(Tibialis_Activation, time_seconds)))
     plt.show()
 
@@ -73,6 +70,10 @@ if __name__ == '__main__':
     # ga_activation.show_curves()
     sol_activation = Fitted_Activation('curve_datasets/soleus_activation.csv', width=0.09)
     # sol_activation.show_curves()
+    time = np.linspace(0.6, 1, 500)
+    angle = get_fitted_natural_stimulation(time)
+    plt.plot(time, angle)
+    plt.show()
 
     time = np.linspace(0, 1, 300)
     plt.plot(time, ga_activation.get_activation(time))
@@ -95,7 +96,7 @@ if __name__ == '__main__':
     # Constant rectangular
     fs = 40  # Hz
     pulse_width = 300  # micro seconds
-    amplitude = 41  # V
+    amplitude = 34.3  # V
     amp_rect = amplitude * np.ones(len(time))
     f_rect = fs * np.ones(len(time))
     rectangular_activation = FES_Activation(time, amp_rect, f_rect, 0.068, 0.076, 0.25)
@@ -103,10 +104,11 @@ if __name__ == '__main__':
 
     # Enveloped naturalistic
     fs = 40  # Hz
-    amplitude = 41  # V
-    amp_enveloped = get_fitted_natural_stimulation(time, scale=amplitude)
-    f_enveloped = fs * np.ones(len(time))
-    enveloped_activation = FES_Activation(time, amp_enveloped, f_enveloped, 0.068, 0.076, 0.25)
+    amplitude = 90  # V
+    # amp_enveloped = get_fitted_natural_stimulation(time, scale=amplitude)
+    amp_enveloped = amplitude * np.array(list(map(Tibialis_Activation, time_seconds)))
+    f_enveloped = fs * np.ones(len(amp_enveloped))
+    enveloped_activation = FES_Activation(time_seconds, amp_enveloped, f_enveloped, 0.068, 0.076, 0.25)
     enveloped_activation.show_curves()
 
     """
@@ -130,7 +132,9 @@ if __name__ == '__main__':
     #     writer.writerow(["time", "force"])
     #     for t, f in zip(sol_sol.t, sol_force):
     #         writer.writerow([t, f])
-    tibialis = Hill_Type_Model("Tibialis Anterior", Tibialis_Activation, stim=enveloped_activation.get_excitation)
+    # tibialis = Hill_Type_Model("Tibialis Anterior", enveloped_activation.get_activation, stim=enveloped_activation.get_excitation)
+    tibialis = Hill_Type_Model("Tibialis Anterior", rectangular_activation.get_activation,
+                               stim=rectangular_activation.get_excitation)
     ta_sol, ta_force = tibialis.simulate(time, energy=True)
     with open("ta_sol.csv", "w") as file:
         writer = csv.writer(file, delimiter=",")

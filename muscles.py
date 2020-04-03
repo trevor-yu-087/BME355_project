@@ -42,7 +42,7 @@ class Hill_Type_Model:
 
         if(muscle == "Tibialis Anterior"):
             # CONSTANTS FOR TibAnt
-            self.Fmax = 523
+            self.Fmax = 700
             self.k_shape = 2.73
             self.k_curve = 6.6
             self.lam_ref = 0.045
@@ -209,8 +209,24 @@ class Hill_Type_Model:
 
 
 if __name__ == "__main__":
-    tibialis_anterior = Hill_Type_Model("Tibialis Anterior", lambda t: np.sin(t * 20))
-    tibialis_anterior.simulate([0, .5], energy=True)
+    sol_activation = Fitted_Activation('curve_datasets/soleus_activation.csv', width=0.09)
+    # sol_activation.show_curves()
+    # soleus = Hill_Type_Model("Tibialis Anterior", sol_activation.get_activation)
+    # soleus.simulate([0, 1], plot=True)
 
-    gastrocnemius = Hill_Type_Model("Gastrocnemius", lambda t: 0.2)
-    gastrocnemius.simulate([0, .5])
+    time = np.linspace(0, 1, 100)
+    f_stim = 66 * np.ones(100)
+    u_stim = np.zeros(100)
+    u_stim[25:49] = 40
+    u_stim[75:99] = 40
+    # U between 29 and 43
+    # F0 = 39.6 Hz
+    t_rise = 0.068  # [s]
+    t_fall = 0.076  # [s]
+    FT_percent = 0.25
+    TA_Activation = FES_Activation(time, u_stim, f_stim, t_rise, t_fall, FT_percent)
+    tibialis_anterior = Hill_Type_Model("Tibialis Anterior", TA_Activation.get_activation, stim=TA_Activation.get_excitation)
+    tibialis_anterior.simulate([0, 1], energy=True, plot=True)
+
+    # gastrocnemius = Hill_Type_Model("Gastrocnemius", lambda t: 0.2)
+    # gastrocnemius.simulate([0, .5])
