@@ -180,8 +180,35 @@ if __name__ == "__main__":
     sol_activation = Fitted_Activation('curve_datasets/soleus_activation.csv', width=0.09)
     # sol_activation.show_curves()
 
-    data = np.loadtxt('curve_datasets/artificial_stimulation_regimen.csv', delimiter=',')
-    plt.plot(data[:,0], data[:,1])
+    # data = np.loadtxt('curve_datasets/artificial_stimulation_regimen.csv', delimiter=',')
+    # plt.plot(data[:,0], data[:,1])
+    # plt.show()
+
+    u_stim = np.arange(0, 60, 0.1)
+    f_stim = np.arange(0, 60, 0.1)
+    time = np.linspace(0, 1, len(u_stim))
+    test_act = FES_Activation(time, u_stim, f_stim, t_rise, t_fall, FT_percent)
+    Su = test_act.Su()
+    Sf = test_act.Sf()
+    plt.plot(u_stim, Su)
+    plt.plot(f_stim, Sf)
+    plt.xlabel('Stimulation Parameter')
+    plt.ylabel('Scaling Factor')
+    plt.legend(['Amplitude [V]', 'Frequency [Hz]'])
+    plt.title('FES scaling factors vs parameters')
+    plt.show()
+
+    freqs = [18, 20, 30, 40, 50, 80]
+    energy_f = [16.56, 17.85, 24, 29.82, 35.20, 35.20]
+    amps = [34.3, 38, 41, 45, 50]
+    energy_a = [16.31, 24.11, 29.82, 35.14, 35.14]
+
+    plt.plot(amps, energy_a)
+    plt.plot(freqs, energy_f)
+    plt.xlabel('FES Parameter')
+    plt.ylabel('Energy [J]')
+    plt.legend(['Amplitude [V]', 'Frequency [Hz]'])
+    plt.title('Energy vs FES Parameters of rectangular pulse')
     plt.show()
 
 

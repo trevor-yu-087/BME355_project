@@ -60,8 +60,8 @@ if __name__ == '__main__':
     # plt.show()
     Act_Tibialis = interpolate.interp1d(time_seconds, get_fitted_natural_stimulation(time_seconds))
     Tibialis_Activation = lambda t: Act_Tibialis((t + .1)%1)
-    plt.plot(time_seconds, list(map(Tibialis_Activation, time_seconds)))
-    plt.show()
+    # plt.plot(time_seconds, list(map(Tibialis_Activation, time_seconds)))
+    # plt.show()
 
     """
     Make different activation profiles
@@ -72,8 +72,8 @@ if __name__ == '__main__':
     # sol_activation.show_curves()
     time = np.linspace(0.6, 1, 500)
     angle = get_fitted_natural_stimulation(time)
-    plt.plot(time, angle)
-    plt.show()
+    # plt.plot(time, angle)
+    # plt.show()
 
     time = np.linspace(0, 1, 300)
     plt.plot(time, ga_activation.get_activation(time))
@@ -82,7 +82,7 @@ if __name__ == '__main__':
     # aa_time = ankle_angle[:,0]/max(ankle_angle[:,0])
     # aa_angle = ankle_angle[:,1]/max(ankle_angle[:,1])
     # plt.plot(aa_time[aa_time > 0.6], aa_angle[aa_time > 0.6])
-    angle = get_fitted_ankle_angle(time, norm=False)
+    angle = get_fitted_ankle_angle(time, norm=True)
     plt.plot(time, angle, 'k')
     # For naturalistic stimulation, assume the maximum voltage is 41 V
 
@@ -96,15 +96,17 @@ if __name__ == '__main__':
     # Constant rectangular
     fs = 40  # Hz
     pulse_width = 300  # micro seconds
-    amplitude = 34.3  # V
+    amplitude = 41  # V
     amp_rect = amplitude * np.ones(len(time))
+    amp_rect[time < 0.49] = 0
+    # amp_rect[time > 0.65] = 0     # Use if making a single pulse
     f_rect = fs * np.ones(len(time))
     rectangular_activation = FES_Activation(time, amp_rect, f_rect, 0.068, 0.076, 0.25)
     rectangular_activation.show_curves()
 
     # Enveloped naturalistic
     fs = 40  # Hz
-    amplitude = 90  # V
+    amplitude = 87  # V
     # amp_enveloped = get_fitted_natural_stimulation(time, scale=amplitude)
     amp_enveloped = amplitude * np.array(list(map(Tibialis_Activation, time_seconds)))
     f_enveloped = fs * np.ones(len(amp_enveloped))
@@ -132,7 +134,9 @@ if __name__ == '__main__':
     #     writer.writerow(["time", "force"])
     #     for t, f in zip(sol_sol.t, sol_force):
     #         writer.writerow([t, f])
+    time = [0.49, 1]       # Run the muscle sim for longer so we can get full energy profile
     # tibialis = Hill_Type_Model("Tibialis Anterior", enveloped_activation.get_activation, stim=enveloped_activation.get_excitation)
+
     tibialis = Hill_Type_Model("Tibialis Anterior", rectangular_activation.get_activation,
                                stim=rectangular_activation.get_excitation)
     ta_sol, ta_force = tibialis.simulate(time, energy=True)
@@ -156,6 +160,7 @@ if __name__ == '__main__':
     F_ga = interpolate.interp1d(ga_sol[:, 0], ga_sol[:, 1])
     F_sol = interpolate.interp1d(sol_sol[:, 0], sol_sol[:, 1])
 
+    time = [.6, 1]  # Run the biomech for same time as before
     ICs = [get_fitted_ankle_angle(min(time), norm=False), 0]
     bm_time, bm_solution = simulate(F_ta, F_ga, F_sol, ICs, time, plot=True)
     simulated_angle = bm_solution[:, 0]
